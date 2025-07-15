@@ -1,4 +1,7 @@
-from fastapi import FastAPI, HTTPException, Query, File, UploadFile, Form, Depends
+from fastapi import FastAPI, HTTPException, Query, File, UploadFile, Form, Depends, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from invoice_reader import analyze_invoice_url
 from db import init_db, try_create_session
 from invoice_reader import save_invoice_to_db, analyze_invoice_url, get_user_invoices
@@ -12,6 +15,9 @@ from auth import *
 
 app = FastAPI()
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
 @app.on_event("startup")
 async def startup():
     init_db()
@@ -19,8 +25,22 @@ async def startup():
 
 
 @app.get("/")
-def read_root():
-    return {"message": "Welcome to the Invoice Reader API"}
+def root():
+    return RedirectResponse(url="/signup-form")
+@app.get("/signup-form")
+def signup_form(request: Request):
+    return templates.TemplateResponse("signup.html", {"request": request})
+@app.get("/login-form")
+def login_form(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+@app.get("/upload-invoice-form")
+def upload_invoice_form(request: Request):
+    return templates.TemplateResponse("upload_invoice.html", {"request": request})
+@app.get("/my-invoices", response_class=HTMLResponse)
+def my_invoices_page(
+    request: Request
+):
+    return templates.TemplateResponse("my_invoices.html", {"request": request})
 
 @app.get("/read-invoice-by-url")
 def read_invoice_by_url(url: str = Query(..., description="Direct image URL")):
